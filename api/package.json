@@ -1,0 +1,17 @@
+{
+  "name": "cartalks-api",
+  "version": "1.0.0",
+  "description": "Backend for CarTalks",
+  "main": "src/functions/*.js",
+  "scripts": {
+    "start": "func start",
+    "test": "echo \"No tests yet...\""
+  },
+  "dependencies": {
+    "@azure/cosmos": "^4.0.0",
+    "@azure/functions": "^4.0.0",
+    "@azure/storage-blob": "^12.29.1",
+    "expo-image-picker": "~14.7.1",
+    "parse-multipart-data": "^1.5.0"
+  }
+}

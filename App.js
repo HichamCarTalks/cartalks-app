@@ -6,14 +6,20 @@ import { StatusBar } from 'expo-status-bar';
 
 // Import screens
 import LoginScreen from './src/screens/LoginScreen';
+import RegisterScreen from './src/screens/RegisterScreen';
 import LicensePlateSearchScreen from './src/screens/LicensePlateSearchScreen';
 import ChatListScreen from './src/screens/ChatListScreen';
 import ChatScreen from './src/screens/ChatScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function MainTabs() {
+function MainTabs({ route }) {
+  // Pass user params down to screens if needed
+  const user = route.params?.user;
+  
   return (
     <Tab.Navigator>
       <Tab.Screen 
@@ -25,6 +31,12 @@ function MainTabs() {
         name="Chats" 
         component={ChatListScreen}
         options={{ title: 'My Chats' }}
+      />
+      <Tab.Screen 
+        name="Settings" 
+        component={SettingsScreen}
+        initialParams={{ user }}
+        options={{ title: 'Settings' }}
       />
     </Tab.Navigator>
   );
@@ -41,7 +53,12 @@ export default function App() {
           options={{ headerShown: false }}
         />
         <Stack.Screen 
-          name="Main" 
+          name="Register" 
+          component={RegisterScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="Main"
           component={MainTabs}
           options={{ headerShown: false }}
         />
@@ -49,6 +66,11 @@ export default function App() {
           name="Chat" 
           component={ChatScreen}
           options={{ title: 'Chat' }}
+        />
+        <Stack.Screen 
+          name="AdminDashboard" 
+          component={AdminDashboardScreen}
+          options={{ title: 'Admin Dashboard' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

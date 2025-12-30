@@ -23,17 +23,24 @@ export default function LicensePlateSearchScreen({ navigation }) {
     { id: '6', plate: 'MNO345', owner: 'Charlie Chaplin', model: 'Volkswagen Beetle' },
   ];
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!searchQuery.trim()) {
       Alert.alert('Error', 'Please enter a license plate');
       return;
     }
 
-    // Filter mock data
-    const results = mockCars.filter(car =>
-      car.plate.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setSearchResults(results);
+    try {
+      const response = await fetch(`/api/cars?q=${encodeURIComponent(searchQuery)}`);
+      if (response.ok) {
+        const results = await response.json();
+        setSearchResults(results);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Failed to search cars');
+    }
   };
 
   const handleStartChat = (car) => {

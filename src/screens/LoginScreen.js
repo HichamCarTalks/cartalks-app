@@ -12,12 +12,32 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 export default function LoginScreen({ navigation }) {
   const [licensePlate, setLicensePlate] = useState('');
-  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = () => {
-    if (licensePlate.trim() && username.trim()) {
-      // Navigate to main app
-      navigation.replace('Main');
+  const handleLogin = async () => {
+    if (licensePlate.trim() && password) {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ licensePlate, password })
+        });
+
+        if (response.ok) {
+          const user = await response.json();
+          // In a real app, store the token/user here
+          navigation.replace('Main', { user });
+        } else {
+          alert('Invalid credentials');
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Login failed. Is the backend running?');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -37,15 +57,6 @@ export default function LoginScreen({ navigation }) {
           <View style={styles.formContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Your Name"
-              placeholderTextColor="#999"
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="words"
-            />
-            
-            <TextInput
-              style={styles.input}
               placeholder="License Plate (e.g., ABC123)"
               placeholderTextColor="#999"
               value={licensePlate}
@@ -54,11 +65,30 @@ export default function LoginScreen({ navigation }) {
               maxLength={10}
             />
 
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#999"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+
             <TouchableOpacity
               style={styles.button}
               onPress={handleLogin}
+              disabled={isLoading}
             >
-              <Text style={styles.buttonText}>Get Started</Text>
+              <Text style={styles.buttonText}>
+                {isLoading ? 'Logging in...' : 'Login'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={() => navigation.navigate('Register')}
+            >
+              <Text style={styles.linkText}>Don't have an account? Sign up</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -113,5 +143,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  linkButton: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  linkText: {
+    color: '#fff',
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
 });

@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { api, Auth } from '../config/api';
+
 export default function LoginScreen({ navigation }) {
   const [licensePlate, setLicensePlate] = useState('');
   const [password, setPassword] = useState('');
@@ -19,15 +21,12 @@ export default function LoginScreen({ navigation }) {
     if (licensePlate.trim() && password) {
       setIsLoading(true);
       try {
-        const response = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ licensePlate, password })
-        });
+        const response = await api.post('/login', { licensePlate, password });
 
         if (response.ok) {
           const user = await response.json();
-          // In a real app, store the token/user here
+          // Save session
+          await Auth.saveUser(user);
           navigation.replace('Main', { user });
         } else {
           alert('Invalid credentials');

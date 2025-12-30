@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
+import { View, ActivityIndicator } from 'react-native';
+import { Auth } from './src/config/api';
 
 // Import screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -43,10 +45,35 @@ function MainTabs({ route }) {
 }
 
 export default function App() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [initialRoute, setInitialRoute] = useState('Login');
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    checkSession();
+  }, []);
+
+  const checkSession = async () => {
+    const session = await Auth.getUser();
+    if (session) {
+      setUser(session);
+      setInitialRoute('Main');
+    }
+    setIsLoading(false);
+  };
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#667eea" />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
       <StatusBar style="auto" />
-      <Stack.Navigator initialRouteName="Login">
+      <Stack.Navigator initialRouteName={initialRoute}>
         <Stack.Screen 
           name="Login" 
           component={LoginScreen}
@@ -58,8 +85,9 @@ export default function App() {
           options={{ headerShown: false }}
         />
         <Stack.Screen 
-          name="Main"
+          name="Main" 
           component={MainTabs}
+          initialParams={{ user }}
           options={{ headerShown: false }}
         />
         <Stack.Screen 

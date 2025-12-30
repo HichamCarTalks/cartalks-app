@@ -10,49 +10,69 @@ import {
   Platform,
 } from 'react-native';
 
+import { api, Auth } from '../config/api';
+
 export default function ChatScreen({ route }) {
   const { recipientName, licensePlate } = route.params;
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [conversationId, setConversationId] = useState('');
 
-  // Mock messages
   useEffect(() => {
-    const mockMessages = [
-      {
-        id: '1',
-        text: 'Hey! I noticed your car in the parking lot',
-        sender: 'them',
-        timestamp: '2:25 PM',
-      },
-      {
-        id: '2',
-        text: 'Hi! Yeah, just parked there',
-        sender: 'me',
-        timestamp: '2:26 PM',
-      },
-      {
-        id: '3',
-        text: 'Nice ride! How long have you had it?',
-        sender: 'them',
-        timestamp: '2:27 PM',
-      },
-    ];
-    setMessages(mockMessages);
+    setup();
+    // Simple polling for "real-time" (every 5 seconds)
+    const interval = setInterval(fetchMessages, 5000);
+    return () => clearInterval(interval);
   }, []);
 
-  const handleSend = () => {
-    if (message.trim()) {
-      const newMessage = {
-        id: Date.now().toString(),
-        text: message,
-        sender: 'me',
-        timestamp: new Date().toLocaleTimeString([], { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        }),
-      };
-      setMessages([...messages, newMessage]);
-      setMessage('');
+  const setup = async () => {
+    const user = await Auth.getUser();
+    if (user) {
+      setCurrentUser(user);
+      // Create a consistent ID: Alphabetically sorted plates
+      // e.g. "AB12CD_XY34YZ"
+      const plates = [user.licensePlate, licensePlate].sort();
+      const convId = `${plates[0]}_${plates[1]}`;
+      setConversationId(convId);
+      // Fetch immediately
+      fetchMessages(convId);
+    }
+  };
+
+  const fetchMessages = async (convId = conversationId) => {
+    if (!convId) return;
+    try {
+      const response = await api.get(`/messages?conversationId=${convId}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Transform for UI if needed, but our API matches nicely
+        setMessages(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSend = async () => {
+    if (message.trim() && currentUser) {
+      const textToSend = message.trim();
+      setMessage(''); // Optimistic clear
+
+      try {
+        const response = await api.post('/messages', {
+          conversationId,
+          text: textToSend,
+          senderId: currentUser.id,
+          senderName: currentUser.username
+        });
+        
+        if (response.ok) {
+          fetchMessages(); // Refresh
+        }
+      } catch (e) {
+        alert('Failed to send');
+      }
     }
   };
 
@@ -60,18 +80,20 @@ export default function ChatScreen({ route }) {
     <View
       style={[
         styles.messageContainer,
-        item.sender === 'me' ? styles.myMessage : styles.theirMessage,
+        item.senderId === currentUser?.id ? styles.myMessage : styles.theirMessage,
       ]}
     >
       <Text
         style={[
           styles.messageText,
-          item.sender === 'me' && styles.myMessageText,
+          item.senderId === currentUser?.id && styles.myMessageText,
         ]}
       >
         {item.text}
       </Text>
-      <Text style={styles.messageTime}>{item.timestamp}</Text>
+      <Text style={styles.messageTime}>
+        {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      </Text>
     </View>
   );
 

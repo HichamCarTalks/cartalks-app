@@ -7,12 +7,18 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Modal,
+  Image,
 } from 'react-native';
+
+import { api } from '../config/api';
 
 export default function AdminDashboardScreen({ navigation }) {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -22,12 +28,12 @@ export default function AdminDashboardScreen({ navigation }) {
     setLoading(true);
     try {
       // Fetch stats
-      const statsRes = await fetch('/api/admin?type=stats');
+      const statsRes = await api.get('/admin?type=stats');
       const statsData = await statsRes.json();
       setStats(statsData);
 
       // Fetch users
-      const usersRes = await fetch('/api/admin?type=users');
+      const usersRes = await api.get('/admin?type=users');
       const usersData = await usersRes.json();
       setUsers(usersData);
     } catch (error) {
@@ -49,9 +55,7 @@ export default function AdminDashboardScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              const res = await fetch(`/api/users?id=${user.id}&licensePlate=${user.licensePlate}`, {
-                method: 'DELETE'
-              });
+              const res = await api.delete(`/users?id=${user.id}&licensePlate=${user.licensePlate}`);
               if (res.ok || res.status === 204) {
                 fetchData(); // Refresh list
               } else {
@@ -72,6 +76,14 @@ export default function AdminDashboardScreen({ navigation }) {
         <Text style={styles.username}>{item.username}</Text>
         <Text style={styles.licensePlate}>{item.licensePlate}</Text>
         <Text style={styles.role}>Role: {item.role || 'user'}</Text>
+        {item.kentekenkaartUrl && (
+          <TouchableOpacity onPress={() => {
+            setSelectedImage(item.kentekenkaartUrl);
+            setModalVisible(true);
+          }}>
+            <Text style={styles.viewDocLink}>View Kentekenkaart</Text>
+          </TouchableOpacity>
+        )}
       </View>
       <TouchableOpacity 
         style={styles.deleteButton}
@@ -110,6 +122,26 @@ export default function AdminDashboardScreen({ navigation }) {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
       />
+
+      <Modal
+        visible={modalVisible}
+        transparent={true}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableOpacity 
+            style={styles.closeButton}
+            onPress={() => setModalVisible(false)}
+          >
+            <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>
+          <Image 
+            source={{ uri: selectedImage }}
+            style={styles.fullImage}
+            resizeMode="contain"
+          />
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -193,6 +225,12 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 4,
   },
+  viewDocLink: {
+    color: '#667eea',
+    fontSize: 12,
+    marginTop: 5,
+    textDecorationLine: 'underline',
+  },
   deleteButton: {
     backgroundColor: '#FF3B30',
     paddingHorizontal: 12,
@@ -202,6 +240,28 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     color: '#fff',
     fontSize: 12,
+    fontWeight: 'bold',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '90%',
+    height: '80%',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    padding: 10,
+    zIndex: 1,
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 18,
     fontWeight: 'bold',
   },
 });

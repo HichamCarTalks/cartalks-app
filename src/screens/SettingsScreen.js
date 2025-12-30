@@ -10,6 +10,8 @@ import {
   ScrollView,
 } from 'react-native';
 
+import { api, Auth } from '../config/api';
+
 export default function SettingsScreen({ route, navigation }) {
   // We assume user is passed via params or global state. 
   // In a real app, use Context or Redux.
@@ -22,14 +24,10 @@ export default function SettingsScreen({ route, navigation }) {
 
   const handleUpdateProfile = async () => {
     try {
-      const response = await fetch('/api/users', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          id: user.id,
-          username,
-          password: password || undefined 
-        })
+      const response = await api.put('/users', { 
+        id: user.id,
+        username,
+        password: password || undefined 
       });
 
       if (response.ok) {
@@ -44,8 +42,8 @@ export default function SettingsScreen({ route, navigation }) {
     }
   };
 
-  const handleLogout = () => {
-    // Clear tokens/state here
+  const handleLogout = async () => {
+    await Auth.logout();
     navigation.reset({
       index: 0,
       routes: [{ name: 'Login' }],

@@ -9,6 +9,8 @@ import {
   Alert,
 } from 'react-native';
 
+import { api } from '../config/api';
+
 export default function LicensePlateSearchScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -30,7 +32,7 @@ export default function LicensePlateSearchScreen({ navigation }) {
     }
 
     try {
-      const response = await fetch(`/api/cars?q=${encodeURIComponent(searchQuery)}`);
+      const response = await api.get(`/cars?q=${encodeURIComponent(searchQuery)}`);
       if (response.ok) {
         const results = await response.json();
         setSearchResults(results);

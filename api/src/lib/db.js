@@ -5,10 +5,12 @@ const key = process.env.COSMOS_DB_KEY;
 const databaseId = "cartalks";
 const containerId = "users";
 const eventsContainerId = "events";
+const messagesContainerId = "messages";
 
 let client = null;
 let container = null;
 let eventsContainer = null;
+let messagesContainer = null;
 
 async function getContainer() {
   if (!container) {
@@ -31,8 +33,15 @@ async function getContainer() {
       partitionKey: "/eventType" 
     });
     eventsContainer = e;
+
+    // Messages Container
+    const { container: m } = await database.containers.createIfNotExists({ 
+      id: messagesContainerId,
+      partitionKey: "/conversationId" // Group messages by conversation (e.g., "USER1_USER2")
+    });
+    messagesContainer = m;
   }
-  return { container, eventsContainer };
+  return { container, eventsContainer, messagesContainer };
 }
 
 module.exports = { getContainer };

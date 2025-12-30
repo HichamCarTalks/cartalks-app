@@ -13,6 +13,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 
+import { api } from '../config/api';
+
 export default function RegisterScreen({ navigation }) {
   const [username, setUsername] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
@@ -87,31 +89,19 @@ export default function RegisterScreen({ navigation }) {
         name: 'kentekenkaart.jpg',
       });
 
-      const uploadRes = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const uploadRes = await api.upload('/upload', formData);
 
       if (!uploadRes.ok) throw new Error('Image upload failed');
       
       const { url: kentekenkaartUrl } = await uploadRes.json();
 
       // 2. Register User
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username,
-          licensePlate,
-          password,
-          kentekenkaartUrl,
-          kentekenkaartIssueDate: issueDate,
-        }),
+      const response = await api.post('/users', {
+        username,
+        licensePlate,
+        password,
+        kentekenkaartUrl,
+        kentekenkaartIssueDate: issueDate,
       });
 
       const data = await response.json();

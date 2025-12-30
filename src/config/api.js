@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 // CONFIGURATION
 // Replace this with your actual Azure Static Web App URL after deployment
-const PROD_API_URL = 'https://delightful-island-0a1b2c3d.azurestaticapps.net'; 
+const PROD_API_URL = 'https://victorious-grass-0e1c45703.4.azurestaticapps.net'; 
 
 // Helper to determine the API Base URL
 // Web: Relative path is fine (proxied by SWA)

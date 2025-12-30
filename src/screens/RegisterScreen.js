@@ -203,6 +203,13 @@ export default function RegisterScreen({ navigation }) {
             </TouchableOpacity>
 
             <TouchableOpacity
+              style={styles.termsButton}
+              onPress={() => navigation.navigate('Terms')}
+            >
+              <Text style={styles.termsText}>By signing up, you agree to our Terms.</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={styles.linkButton}
               onPress={() => navigation.goBack()}
             >
@@ -291,5 +298,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     textDecorationLine: 'underline',
+  },
+  termsButton: {
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  termsText: {
+    color: '#f0f0f0',
+    fontSize: 12,
   },
 });

@@ -43,11 +43,45 @@ export default function SettingsScreen({ route, navigation }) {
   };
 
   const handleLogout = async () => {
+    // Clear push token from backend
+    try {
+        await api.put('/users', { id: user.id, pushToken: null });
+    } catch (e) {
+        console.log('Failed to clear push token', e);
+    }
+
     await Auth.logout();
     navigation.reset({
       index: 0,
       routes: [{ name: 'Login' }],
     });
+  };
+
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await api.delete(`/users?id=${user.id}&licensePlate=${user.licensePlate}`);
+              if (res.ok || res.status === 204) {
+                await Auth.logout();
+                navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+              } else {
+                Alert.alert('Error', 'Failed to delete account');
+              }
+            } catch (err) {
+              Alert.alert('Error', 'Network error');
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -103,6 +137,9 @@ export default function SettingsScreen({ route, navigation }) {
       <View style={styles.section}>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutText}>Log Out</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
+          <Text style={styles.deleteText}>Delete Account</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -175,8 +212,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoutText: {
-    color: '#FF3B30',
+    color: '#667eea',
     fontSize: 16,
     fontWeight: 'bold',
   },
+  deleteButton: {
+    padding: 15,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  deleteText: {
+    color: '#FF3B30',
+    fontSize: 16,
+    fontWeight: 'bold',
+  }
 });

@@ -40,8 +40,42 @@ async function getContainer() {
       partitionKey: "/conversationId" // Group messages by conversation (e.g., "USER1_USER2")
     });
     messagesContainer = m;
+
+    // Conversations Container (for chat list)
+    const { container: conv } = await database.containers.createIfNotExists({
+      id: "conversations",
+      partitionKey: "/id"
+    });
+    
+    // Blocks Container
+    const { container: b } = await database.containers.createIfNotExists({
+      id: "blocks",
+      partitionKey: "/blockerId" // Query by "who did the blocking"
+    });
+
+    // Reports Container
+    const { container: r } = await database.containers.createIfNotExists({
+      id: "reports",
+      partitionKey: "/id"
+    });
+
+    return { 
+      container, 
+      eventsContainer, 
+      messagesContainer, 
+      conversationsContainer: conv,
+      blocksContainer: b,
+      reportsContainer: r
+    };
   }
-  return { container, eventsContainer, messagesContainer };
+  return { 
+    container, 
+    eventsContainer, 
+    messagesContainer, 
+    conversationsContainer: container ? null : null,
+    blocksContainer: container ? null : null,
+    reportsContainer: container ? null : null
+  };
 }
 
 module.exports = { getContainer };

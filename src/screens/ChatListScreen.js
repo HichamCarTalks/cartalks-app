@@ -1,77 +1,108 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   FlatList,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { api, Auth } from '../config/api';
 
 export default function ChatListScreen({ navigation }) {
-  // Mock chat data
-  const mockChats = [
-    {
-      id: '1',
-      recipientName: 'John Doe',
-      licensePlate: 'ABC123',
-      lastMessage: 'Hey, nice car!',
-      timestamp: '2:30 PM',
-      unread: true,
-    },
-    {
-      id: '2',
-      recipientName: 'Jane Smith',
-      licensePlate: 'XYZ789',
-      lastMessage: 'Thanks for letting me know',
-      timestamp: 'Yesterday',
-      unread: false,
-    },
-    {
-      id: '3',
-      recipientName: 'Mike Johnson',
-      licensePlate: 'DEF456',
-      lastMessage: 'See you at the parking lot',
-      timestamp: 'Monday',
-      unread: false,
-    },
-    {
-      id: '4',
-      recipientName: 'Alice Cooper',
-      licensePlate: 'GHI789',
-      lastMessage: 'Nice engine sound!',
-      timestamp: '10:00 AM',
-      unread: true,
-    },
-    {
-      id: '5',
-      recipientName: 'Bob Marley',
-      licensePlate: 'JKL012',
-      lastMessage: 'One love!',
-      timestamp: 'Sunday',
-      unread: false,
-    },
-  ];
+  const [chats, setChats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Load user on mount
+  useEffect(() => {
+    Auth.getUser().then(user => {
+      setCurrentUser(user);
+    });
+  }, []);
+
+  // Fetch chats when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (currentUser) {
+        fetchChats();
+      }
+    }, [currentUser])
+  );
+
+  const fetchChats = async () => {
+    if (!currentUser) return;
+    
+    try {
+      // 1. Fetch Conversations
+      const response = await api.get(`/conversations?licensePlate=${currentUser.licensePlate}`);
+      
+      // 2. Fetch Blocks
+      const blocksRes = await api.get(`/safety?action=listBlocks&blockerId=${currentUser.id}`);
+      let blockedIds = [];
+      if (blocksRes.ok) {
+         blockedIds = await blocksRes.json();
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        const formatted = data
+          .map(conv => {
+            // Identify the OTHER participant
+            const otherPlate = conv.participants.find(p => p !== currentUser.licensePlate) || 'Unknown';
+            return {
+                id: conv.id,
+                recipientName: 'Driver',
+                licensePlate: otherPlate,
+                lastMessage: conv.lastMessage,
+                timestamp: conv.timestamp,
+                unread: (conv.unreadCounts?.[currentUser.licensePlate] || 0) > 0,
+                unreadCount: conv.unreadCounts?.[currentUser.licensePlate] || 0
+            };
+          })
+          // Filter out blocked users (using licensePlate as ID for now, as discussed in safety.js)
+          .filter(chat => !blockedIds.includes(chat.licensePlate));
+          
+        setChats(formatted);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchChats();
+  };
 
   const renderChatItem = ({ item }) => (
     <TouchableOpacity
       style={styles.chatCard}
       onPress={() => navigation.navigate('Chat', {
-        recipientName: item.recipientName,
+        recipientName: item.recipientName, // Ideally we fetch the real username later
         licensePlate: item.licensePlate,
       })}
     >
       <View style={styles.avatarContainer}>
         <Text style={styles.avatarText}>
-          {item.recipientName.charAt(0).toUpperCase()}
+          {item.licensePlate.charAt(0).toUpperCase()}
         </Text>
       </View>
       
       <View style={styles.chatInfo}>
         <View style={styles.chatHeader}>
-          <Text style={styles.recipientName}>{item.recipientName}</Text>
-          <Text style={styles.timestamp}>{item.timestamp}</Text>
+          <Text style={styles.recipientName}>{item.licensePlate}</Text>
+          <Text style={styles.timestamp}>
+            {new Date(item.timestamp).toLocaleDateString()}
+          </Text>
         </View>
-        <Text style={styles.licensePlate}>{item.licensePlate}</Text>
         <Text 
           style={[
             styles.lastMessage, 
@@ -83,18 +114,35 @@ export default function ChatListScreen({ navigation }) {
         </Text>
       </View>
       
-      {item.unread && <View style={styles.unreadDot} />}
+      {item.unread && (
+          <View style={styles.unreadDot}>
+            {item.unreadCount > 1 && (
+                <Text style={styles.unreadText}>{item.unreadCount}</Text>
+            )}
+          </View>
+      )}
     </TouchableOpacity>
   );
 
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#667eea" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      {mockChats.length > 0 ? (
+      {chats.length > 0 ? (
         <FlatList
-          data={mockChats}
+          data={chats}
           renderItem={renderChatItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         />
       ) : (
         <View style={styles.emptyState}>
@@ -113,6 +161,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   listContainer: {
     padding: 10,
@@ -178,11 +231,18 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   unreadDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: '#4CAF50',
     marginLeft: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  unreadText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   emptyState: {
     flex: 1,

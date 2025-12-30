@@ -9,11 +9,16 @@ import {
   Alert,
 } from 'react-native';
 
-import { api } from '../config/api';
+import { api, Auth } from '../config/api';
 
 export default function LicensePlateSearchScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  React.useEffect(() => {
+    Auth.getUser().then(u => setCurrentUser(u));
+  }, []);
 
   // Mock data - in a real app, this would fetch from a backend
   const mockCars = [
@@ -46,6 +51,11 @@ export default function LicensePlateSearchScreen({ navigation }) {
   };
 
   const handleStartChat = (car) => {
+    if (currentUser && car.plate === currentUser.licensePlate) {
+        Alert.alert("Error", "You cannot chat with yourself.");
+        return;
+    }
+
     navigation.navigate('Chat', { 
       recipientName: car.owner,
       licensePlate: car.plate,

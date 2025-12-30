@@ -3,8 +3,13 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator } from 'react-native';
-import { Auth } from './src/config/api';
+import { View, ActivityIndicator, Alert, Platform } from 'react-native';
+import { Auth, api } from './src/config/api';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
+import OfflineNotice from './src/components/OfflineNotice';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import { navigationRef, navigate } from './src/navigation/navigationRef';
 
 // Import screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -51,7 +56,46 @@ export default function App() {
 
   useEffect(() => {
     checkSession();
+    registerForPushNotificationsAsync();
+    
+    // Handle notification taps
+    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+      const { conversationId, recipientName, licensePlate } = response.notification.request.content.data;
+      
+      console.log('Notification tapped:', conversationId);
+      navigate('Chat', {
+        recipientName: recipientName || 'Driver',
+        licensePlate: licensePlate || 'Unknown' // Ideally passed in data
+      });
+    });
+
+    return () => subscription.remove();
   }, []);
+
+  const registerForPushNotificationsAsync = async () => {
+    if (Platform.OS === 'web') return;
+
+    let token;
+    if (Device.isDevice) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') {
+        return;
+      }
+      token = (await Notifications.getExpoPushTokenAsync()).data;
+      
+      // Save token to backend if user is logged in, or save to state to send later
+      // For now, we'll try to save it after login or if session exists
+      const user = await Auth.getUser();
+      if (user && token) {
+         await api.put('/users', { id: user.id, pushToken: token });
+      }
+    }
+  };
 
   const checkSession = async () => {
     const session = await Auth.getUser();
@@ -71,36 +115,41 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <StatusBar style="auto" />
-      <Stack.Navigator initialRouteName={initialRoute}>
-        <Stack.Screen 
-          name="Login" 
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="Register" 
-          component={RegisterScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="Main" 
-          component={MainTabs}
-          initialParams={{ user }}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="Chat" 
-          component={ChatScreen}
-          options={{ title: 'Chat' }}
-        />
-        <Stack.Screen 
-          name="AdminDashboard" 
-          component={AdminDashboardScreen}
-          options={{ title: 'Admin Dashboard' }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <ErrorBoundary>
+      <View style={{ flex: 1 }}>
+      <OfflineNotice />
+      <NavigationContainer ref={navigationRef}>
+        <StatusBar style="auto" />
+        <Stack.Navigator initialRouteName={initialRoute}>
+          <Stack.Screen 
+            name="Login" 
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="Register" 
+            component={RegisterScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="Main" 
+            component={MainTabs}
+            initialParams={{ user }}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="Chat" 
+            component={ChatScreen}
+            options={{ title: 'Chat' }}
+          />
+          <Stack.Screen 
+            name="AdminDashboard" 
+            component={AdminDashboardScreen}
+            options={{ title: 'Admin Dashboard' }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+      </View>
+    </ErrorBoundary>
   );
 }

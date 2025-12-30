@@ -6,8 +6,23 @@ app.http('admin', {
   authLevel: 'anonymous',
   handler: async (request, context) => {
     try {
-      const container = await getContainer();
+      const { container } = await getContainer();
       
+      const userId = request.query.get('userId');
+      if (!userId) {
+          return { status: 401, body: "Unauthorized: Missing userId" };
+      }
+
+      // Verify Admin Role
+      try {
+          const { resource: user } = await container.item(userId, undefined).read();
+          if (!user || user.role !== 'admin') {
+              return { status: 403, body: "Forbidden: Admin access required" };
+          }
+      } catch (e) {
+          return { status: 401, body: "Unauthorized: User not found" };
+      }
+
       const type = request.query.get('type'); // 'stats' or 'users'
 
       if (type === 'stats') {
